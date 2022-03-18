@@ -3,29 +3,22 @@ package com.github.robertwsmith
 import ml.dmlc.xgboost4j.scala.spark.XGBoostClassificationModel
 import org.apache.spark.ml.classification.RandomForestClassificationModel
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.sql.types.{
-  DoubleType,
-  StringType,
-  StructField,
-  StructType
-}
 import org.apache.spark.sql.{DataFrame, SaveMode}
+import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
 
 import scala.collection.immutable.StringOps
 import scala.collection.mutable.ArrayBuffer
 
 package object ml_pipelines {
 
-  val targetColumnName: String = "species"
-  val labelColumnName: String = "label"
+  lazy val maxMetricLength: Int = multiclassMetrics.map(_.length).max
+  val targetColumnName: String  = "species"
+  val labelColumnName: String   = "label"
   val featureColumnName: String = "features"
   val predictorColumnNames: Array[String] =
     Array("sepal_length", "sepal_width", "petal_length", "petal_width")
-
   val multiclassMetrics: Array[String] =
     Array("accuracy", "f1", "weightedPrecision", "weightedRecall")
-  lazy val maxMetricLength: Int = multiclassMetrics.map(_.length).max
-
   val irisSchema: StructType = StructType(
     StructField("sepal_length", DoubleType) ::
       StructField("sepal_width", DoubleType) ::
@@ -43,10 +36,10 @@ package object ml_pipelines {
   }
 
   case class EvaluateMetric(
-      metric: String,
-      dataFrame: DataFrame,
-      labelCol: String,
-      predictionCol: String
+    metric: String,
+    dataFrame: DataFrame,
+    labelCol: String,
+    predictionCol: String
   ) {
     require(multiclassMetrics.contains(metric))
 
@@ -58,47 +51,36 @@ package object ml_pipelines {
         .evaluate(dataFrame)
   }
 
-  case class ModelFitMetrics(
-      dataFrame: DataFrame,
-      labelCol: String,
-      predictionCol: String
-  ) {
-    def calculate(): Map[String, Double] = {
-      val buffer = new ArrayBuffer[(String, Double)]()
-
-      multiclassMetrics.foreach(mcm => {
-        buffer.append(
-          (
-            mcm,
-            EvaluateMetric(mcm, dataFrame, labelCol, predictionCol).calculate()
-          )
-        )
-      })
-
-      buffer.toMap
-    }
-
+  case class ModelFitMetrics(dataFrame: DataFrame, labelCol: String, predictionCol: String) {
     override def toString: String = {
       val builder = new StringBuilder
 
       builder.append("Model Fit Metrics: \n")
-      val calcs = calculate()
+      val calcs  = calculate()
       val maxLen = calcs.keys.map(_.length).max
-      calcs.foreach {
-        case (key: String, value: Double) => {
-          val padding =
-            if (maxLen == key.length) ""
-            else new StringOps(" ") * (maxLen - key.length)
-          builder.append(s"\t${key}${padding} -> ${value}\n")
-        }
+      calcs.foreach { case (key: String, value: Double) =>
+        val padding =
+          if (maxLen == key.length) ""
+          else new StringOps(" ") * (maxLen - key.length)
+        builder.append(s"\t$key$padding -> $value\n")
       }
       builder.toString()
+    }
+
+    def calculate(): Map[String, Double] = {
+      val buffer = new ArrayBuffer[(String, Double)]()
+
+      multiclassMetrics.foreach(mcm => {
+        buffer.append((mcm, EvaluateMetric(mcm, dataFrame, labelCol, predictionCol).calculate()))
+      })
+
+      buffer.toMap
     }
   }
 
   case class RandomForestMetricsReport(
-      model: RandomForestClassificationModel,
-      inputCols: Array[String]
+    model: RandomForestClassificationModel,
+    inputCols: Array[String]
   ) {
     lazy val maxInputColLength: Int = inputCols.map(_.length).max
 
@@ -120,7 +102,7 @@ package object ml_pipelines {
         val padding =
           if (maxLen == name.length) ""
           else new StringOps(" ") * (maxLen - name.length)
-        builder.append(s"\t${name}${padding} -> ${fi}\n")
+        builder.append(s"\t$name$padding -> $fi\n")
       }
 
       builder.toString()
@@ -128,9 +110,9 @@ package object ml_pipelines {
   }
 
   case class XGBoostMetricsReport(
-      model: XGBoostClassificationModel,
-      inputCols: Array[String],
-      importanceType: String = "gain"
+    model: XGBoostClassificationModel,
+    inputCols: Array[String],
+    importanceType: String = "gain"
   ) {
 
     override def toString: String = {
@@ -154,13 +136,11 @@ package object ml_pipelines {
 
       featureScoreMap.toSeq
         .sortBy(_._2)(Ordering[Double].reverse)
-        .foreach {
-          case (key: String, value: Double) => {
-            val padding =
-              if (maxInputColLength == key.length) ""
-              else new StringOps(" ") * (maxInputColLength - key.length)
-            builder.append(s"\t${key}${padding} -> ${value}\n")
-          }
+        .foreach { case (key: String, value: Double) =>
+          val padding =
+            if (maxInputColLength == key.length) ""
+            else new StringOps(" ") * (maxInputColLength - key.length)
+          builder.append(s"\t$key$padding -> $value\n")
         }
 
       builder.toString()

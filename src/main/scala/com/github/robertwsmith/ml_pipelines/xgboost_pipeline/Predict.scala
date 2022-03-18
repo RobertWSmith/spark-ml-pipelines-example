@@ -1,25 +1,13 @@
 package com.github.robertwsmith.ml_pipelines.xgboost_pipeline
 
 import com.github.robertwsmith.ml_pipelines.{makeSaveMode, ModelFitMetrics}
-import com.github.robertwsmith.ml_pipelines.pipeline.{PipelinePredictConfig}
+import com.github.robertwsmith.ml_pipelines.pipeline.PipelinePredictConfig
 import org.apache.spark.ml.classification.RandomForestClassificationModel
-import org.apache.spark.ml.feature.{
-  IndexToString,
-  StringIndexerModel,
-  VectorAssembler
-}
 import org.apache.spark.ml.PipelineModel
 import org.apache.spark.sql.SparkSession
-import scopt.OptionParser
-import com.github.robertwsmith.ml_pipelines.pipeline.{
-  PipelinePredictConfig,
-  Predict => PPredict
-}
 
-class Predict {
+object Predict {
   val name: String = "xgboost-pipeline-predict"
-
-  import PPredict.parser
 
   /** Pipeline Model Predict
     *
@@ -28,10 +16,11 @@ class Predict {
   def main(args: Array[String]): Unit = {
     // Step 1
     val parsed: PipelinePredictConfig =
-      this.parser.parse(args.toSeq, PipelinePredictConfig()) match {
+      com.github.robertwsmith.ml_pipelines.pipeline.Predict.parser
+        .parse(args.toSeq, PipelinePredictConfig()) match {
         case Some(c) => c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step 2
@@ -48,7 +37,7 @@ class Predict {
     val randomForest = pipelineModel
       .stages(2)
       .asInstanceOf[RandomForestClassificationModel]
-    val labelCol = randomForest.getOrDefault(randomForest.labelCol)
+    val labelCol      = randomForest.getOrDefault(randomForest.labelCol)
     val predictionCol = randomForest.getOrDefault(randomForest.predictionCol)
 
     println(ModelFitMetrics(prediction, labelCol, predictionCol).toString)

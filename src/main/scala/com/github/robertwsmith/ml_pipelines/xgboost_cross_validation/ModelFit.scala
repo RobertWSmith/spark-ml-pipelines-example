@@ -5,17 +5,10 @@ import com.github.robertwsmith.ml_pipelines.cross_validation.{
   CrossValidationModelFitConfig,
   ModelFit => CVModelFit
 }
-import ml.dmlc.xgboost4j.scala.spark.{
-  XGBoostClassificationModel,
-  XGBoostClassifier
-}
+import ml.dmlc.xgboost4j.scala.spark.{XGBoostClassificationModel, XGBoostClassifier}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature.{
-  IndexToString,
-  StringIndexer,
-  VectorAssembler
-}
+import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 
@@ -24,13 +17,10 @@ object ModelFit {
   def main(args: Array[String]): Unit = {
     // Step #1 - Parse the command line arguments
     val parsed: CrossValidationModelFitConfig =
-      CVModelFit.parser.parse(
-        args.toSeq,
-        CrossValidationModelFitConfig()
-      ) match {
+      CVModelFit.parser.parse(args.toSeq, CrossValidationModelFitConfig()) match {
         case Some(c) => c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step #2 - Start SparkSession
@@ -70,12 +60,7 @@ object ModelFit {
       .setLabels(stringIndexerModel.labels)
 
     val pipeline = new Pipeline().setStages(
-      Array[PipelineStage](
-        stringIndexerModel,
-        vectorAssembler,
-        xgboostClassifier,
-        indexToString
-      )
+      Array[PipelineStage](stringIndexerModel, vectorAssembler, xgboostClassifier, indexToString)
     )
 
     val paramGrid = new ParamGridBuilder()
@@ -110,12 +95,7 @@ object ModelFit {
         .asInstanceOf[XGBoostClassificationModel]
 
     // Step #14 - Evaluate RandomForestClassificationModel metrics
-    println(
-      XGBoostMetricsReport(
-        xgboostClassificationModel,
-        vectorAssembler.getInputCols
-      ).toString
-    )
+    println(XGBoostMetricsReport(xgboostClassificationModel, vectorAssembler.getInputCols).toString)
 
     // Step #15 - Stop Spark
     spark.stop()

@@ -2,25 +2,17 @@ package com.github.robertwsmith.ml_pipelines.cross_validation
 
 import com.github.robertwsmith.ml_pipelines._
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
-import org.apache.spark.ml.classification.{
-  RandomForestClassificationModel,
-  RandomForestClassifier
-}
+import org.apache.spark.ml.classification.{RandomForestClassificationModel, RandomForestClassifier}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature.{
-  IndexToString,
-  StringIndexer,
-  VectorAssembler
-}
+import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
-import org.apache.spark.ml.util.MLWritable
 import org.apache.spark.sql.SparkSession
 import scopt.OptionParser
 
 case class CrossValidationModelFitConfig(
-    input: String = "examples/data/iris-train",
-    crossValidation: String = "examples/model/cross_validation/",
-    overwrite: Boolean = false
+  input: String = "examples/data/iris-train",
+  crossValidation: String = "examples/model/cross_validation/",
+  overwrite: Boolean = false
 )
 
 object ModelFit {
@@ -52,7 +44,7 @@ object ModelFit {
       parser.parse(args, CrossValidationModelFitConfig()) match {
         case Some(c) => c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step #2 - Start SparkSession
@@ -88,12 +80,7 @@ object ModelFit {
       .setLabels(stringIndexerModel.labels)
 
     val pipeline = new Pipeline().setStages(
-      Array[PipelineStage](
-        stringIndexerModel,
-        vectorAssembler,
-        randomForest,
-        indexToString
-      )
+      Array[PipelineStage](stringIndexerModel, vectorAssembler, randomForest, indexToString)
     )
     val paramGrid = new ParamGridBuilder()
       .addGrid(randomForest.maxDepth, Array(3, 4, 5, 6))

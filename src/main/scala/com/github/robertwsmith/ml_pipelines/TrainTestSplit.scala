@@ -4,11 +4,11 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import scopt.OptionParser
 
 case class TrainTestSplitConfig(
-    input: String = "examples/data/iris-raw",
-    train: String = "examples/data/iris-train",
-    test: String = "examples/data/iris-test",
-    trainPercent: Double = 0.7,
-    overwrite: Boolean = false
+  input: String = "examples/data/iris-raw",
+  train: String = "examples/data/iris-train",
+  test: String = "examples/data/iris-test",
+  trainPercent: Double = 0.7,
+  overwrite: Boolean = false
 )
 
 object TrainTestSplit {
@@ -57,7 +57,7 @@ object TrainTestSplit {
       parser.parse(args, TrainTestSplitConfig()) match {
         case Some(c) => require(c.train != c.test); c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step #2 - Start SparkSession

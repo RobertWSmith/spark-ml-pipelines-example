@@ -1,49 +1,41 @@
 package com.github.robertwsmith.ml_pipelines.pipeline
 
-import com.github.robertwsmith.ml_pipelines.{
-  makeSaveMode,
-  modelFitMetrics,
-  ModelFitMetrics
-}
+import com.github.robertwsmith.ml_pipelines.{makeSaveMode, ModelFitMetrics}
 import org.apache.spark.ml.classification.RandomForestClassificationModel
-import org.apache.spark.ml.feature.{
-  IndexToString,
-  StringIndexerModel,
-  VectorAssembler
-}
 import org.apache.spark.ml.PipelineModel
 import org.apache.spark.sql.SparkSession
 import scopt.OptionParser
 
 case class PipelinePredictConfig(
-    input: String = "examples/data/iris-test",
-    output: String = "examples/data/pipeline/iris-test-predict",
-    pipeline: String = "examples/model/pipeline/",
-    overwrite: Boolean = false
+  input: String = "examples/data/iris-test",
+  output: String = "examples/data/pipeline/iris-test-predict",
+  pipeline: String = "examples/model/pipeline/",
+  overwrite: Boolean = false
 )
 
-class Predict {
+object Predict {
   val name: String = "pipeline-predict"
 
-  val parser = new OptionParser[PipelinePredictConfig](name) {
-    head(name, "1.0")
+  val parser: OptionParser[PipelinePredictConfig] =
+    new OptionParser[PipelinePredictConfig](name) {
+      head(name, "1.0")
 
-    opt[String]("input")
-      .action((x, c) => c.copy(input = x))
-      .optional()
+      opt[String]("input")
+        .action((x, c) => c.copy(input = x))
+        .optional()
 
-    opt[String]("output")
-      .action((x, c) => c.copy(output = x))
-      .optional()
+      opt[String]("output")
+        .action((x, c) => c.copy(output = x))
+        .optional()
 
-    opt[String]("pipeline")
-      .action((x, c) => c.copy(pipeline = x))
-      .optional()
+      opt[String]("pipeline")
+        .action((x, c) => c.copy(pipeline = x))
+        .optional()
 
-    opt[Unit]("overwrite")
-      .action((_, c) => c.copy(overwrite = true))
-      .optional()
-  }
+      opt[Unit]("overwrite")
+        .action((_, c) => c.copy(overwrite = true))
+        .optional()
+    }
 
   /** Pipeline Model Predict
     *
@@ -55,7 +47,7 @@ class Predict {
       this.parser.parse(args, PipelinePredictConfig()) match {
         case Some(c) => c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step 2
@@ -72,7 +64,7 @@ class Predict {
     val randomForest = pipelineModel
       .stages(2)
       .asInstanceOf[RandomForestClassificationModel]
-    val labelCol = randomForest.getOrDefault(randomForest.labelCol)
+    val labelCol      = randomForest.getOrDefault(randomForest.labelCol)
     val predictionCol = randomForest.getOrDefault(randomForest.predictionCol)
 
     println(ModelFitMetrics(prediction, labelCol, predictionCol).toString)

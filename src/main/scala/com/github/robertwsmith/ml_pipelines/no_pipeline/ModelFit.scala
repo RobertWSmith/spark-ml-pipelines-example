@@ -3,22 +3,18 @@ package com.github.robertwsmith.ml_pipelines.no_pipeline
 import com.github.robertwsmith.ml_pipelines._
 import org.apache.spark.ml.PipelineStage
 import org.apache.spark.ml.classification.RandomForestClassifier
-import org.apache.spark.ml.feature.{
-  IndexToString,
-  StringIndexer,
-  VectorAssembler
-}
+import org.apache.spark.ml.feature.{IndexToString, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.util.MLWritable
 import org.apache.spark.sql.SparkSession
 import scopt.OptionParser
 
 case class NoPipelineModelFitConfig(
-    input: String = "examples/data/iris-train",
-    stringIndexer: String = "examples/model/no_pipeline/string_indexer",
-    vectorAssembler: String = "examples/model/no_pipeline/vector_assembler",
-    randomForest: String = "examples/model/no_pipeline/random_forest",
-    indexToString: String = "examples/model/no_pipeline/index_to_string",
-    overwrite: Boolean = false
+  input: String = "examples/data/iris-train",
+  stringIndexer: String = "examples/model/no_pipeline/string_indexer",
+  vectorAssembler: String = "examples/model/no_pipeline/vector_assembler",
+  randomForest: String = "examples/model/no_pipeline/random_forest",
+  indexToString: String = "examples/model/no_pipeline/index_to_string",
+  overwrite: Boolean = false
 )
 
 object ModelFit {
@@ -54,17 +50,6 @@ object ModelFit {
         .optional()
     }
 
-  def persistPipelineStage(
-      stage: PipelineStage with MLWritable,
-      path: String,
-      overwrite: Boolean = false
-  ): Unit = {
-    if (overwrite)
-      stage.write.overwrite().save(path)
-    else
-      stage.save(path)
-  }
-
   /** Machine Learning Pipeline Tutorial - No Pipeline Example
     *
     * 1. Parse the command line arguments
@@ -89,7 +74,7 @@ object ModelFit {
       parser.parse(args, NoPipelineModelFitConfig()) match {
         case Some(c) => c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step #2 - Start SparkSession
@@ -105,11 +90,7 @@ object ModelFit {
     val stringIndexerModel = stringIndexer.fit(trainDF)
 
     // Step #5 - Write StringIndexerModel to HDFS
-    this.persistPipelineStage(
-      stringIndexerModel,
-      parsed.stringIndexer,
-      parsed.overwrite
-    )
+    this.persistPipelineStage(stringIndexerModel, parsed.stringIndexer, parsed.overwrite)
 
     // Step #6 - Create VectorAssembler Instance
     val vectorAssembler = new VectorAssembler()
@@ -117,11 +98,7 @@ object ModelFit {
       .setOutputCol(featureColumnName)
 
     // Step #7 - Write VectorAssember to HDFS
-    persistPipelineStage(
-      vectorAssembler,
-      parsed.vectorAssembler,
-      parsed.overwrite
-    )
+    persistPipelineStage(vectorAssembler, parsed.vectorAssembler, parsed.overwrite)
 
     // Step #8 - Create a RandomForestClassifier instance
     val randomForest = new RandomForestClassifier()
@@ -143,17 +120,13 @@ object ModelFit {
 
     // Step #11 - Apply StringIndexerModel, VectorAssembler transformations to the training dataset
     val stringTransformed = stringIndexerModel.transform(trainDF)
-    val vectorAssembled = vectorAssembler.transform(stringTransformed)
+    val vectorAssembled   = vectorAssembler.transform(stringTransformed)
 
     // Step #12 - Fit the RandomForestClassifier estimator
     val randomForestClassificationModel = randomForest.fit(vectorAssembled)
 
     // Step #13 - Write RandomForestClassificationModel to HDFS
-    persistPipelineStage(
-      randomForestClassificationModel,
-      parsed.randomForest,
-      parsed.overwrite
-    )
+    persistPipelineStage(randomForestClassificationModel, parsed.randomForest, parsed.overwrite)
 
     // Step #14 - Evaluate RandomForestClassificationModel metrics
     println(
@@ -165,6 +138,17 @@ object ModelFit {
 
     // Step #15 - Stop Spark
     spark.stop()
+  }
+
+  def persistPipelineStage(
+    stage: PipelineStage with MLWritable,
+    path: String,
+    overwrite: Boolean = false
+  ): Unit = {
+    if (overwrite)
+      stage.write.overwrite().save(path)
+    else
+      stage.save(path)
   }
 
 }

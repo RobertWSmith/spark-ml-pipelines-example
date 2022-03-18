@@ -1,12 +1,13 @@
 package com.github.robertwsmith.ml_pipelines.xgboost_cross_validation
 
 import com.github.robertwsmith.ml_pipelines.{makeSaveMode, ModelFitMetrics}
-import com.github.robertwsmith.ml_pipelines.pipeline.PipelinePredictConfig
-import org.apache.spark.ml.classification.RandomForestClassificationModel
+import com.github.robertwsmith.ml_pipelines.cross_validation.CrossValidationPredictConfig
+import ml.dmlc.xgboost4j.scala.spark.XGBoostClassificationModel
 import org.apache.spark.ml.PipelineModel
+import org.apache.spark.ml.tuning.CrossValidatorModel
 import org.apache.spark.sql.SparkSession
 
-class Predict {
+object Predict {
   val name: String = "xgboost-pipeline-predict"
 
   /** Pipeline Model Predict
@@ -15,29 +16,31 @@ class Predict {
     */
   def main(args: Array[String]): Unit = {
     // Step 1
-    val parsed: PipelinePredictConfig =
-      this.parser.parse(args.toSeq, PipelinePredictConfig()) match {
+    val parsed: CrossValidationPredictConfig =
+      com.github.robertwsmith.ml_pipelines.cross_validation.Predict.parser
+        .parse(args.toSeq, CrossValidationPredictConfig()) match {
         case Some(c) => c
         case None =>
-          throw new Exception(s"Malformed command line arguments: ${args}")
+          throw new Exception(s"Malformed command line arguments: ${args.mkString(", ")}")
       }
 
     // Step 2
     val spark = SparkSession.builder().getOrCreate()
 
-    val pipelineModel = PipelineModel.load(parsed.pipeline)
+    val crossValidatorModel = CrossValidatorModel.load(parsed.crossValidation)
 
     val testDF = spark.read.parquet(parsed.input)
 
-    val prediction = pipelineModel.transform(testDF).repartition(1)
+    val prediction = crossValidatorModel.transform(testDF).repartition(1)
 
     prediction.write.mode(makeSaveMode(parsed.overwrite)).parquet(parsed.output)
 
-    val randomForest = pipelineModel
+    val xgboostModel = crossValidatorModel.bestModel
+      .asInstanceOf[PipelineModel]
       .stages(2)
-      .asInstanceOf[RandomForestClassificationModel]
-    val labelCol = randomForest.getOrDefault(randomForest.labelCol)
-    val predictionCol = randomForest.getOrDefault(randomForest.predictionCol)
+      .asInstanceOf[XGBoostClassificationModel]
+    val labelCol      = xgboostModel.getOrDefault(xgboostModel.labelCol)
+    val predictionCol = xgboostModel.getOrDefault(xgboostModel.predictionCol)
 
     println(ModelFitMetrics(prediction, labelCol, predictionCol).toString)
 
